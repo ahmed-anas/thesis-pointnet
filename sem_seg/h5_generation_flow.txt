@@ -1,0 +1,32 @@
+Data format
+    Folder name (this is the name of the location)
+    main txt file (this is all data ponts)
+    annotation
+        this is the labelled data
+
+
+COLLECT FLOW
+    READ FILES
+        get points (x,y,z,r,g,b)
+        voxelize the data. Or rather a kind of convolution
+            set a block size
+            set a stride (pixels to skip per turn)
+
+            for each block, pick a specific number of points
+            so now you will have your new array
+
+        if the output of room2blocks has dimension 80x4096x6 it means
+            80 total blocks
+            4096  points per block
+            6 = x,y,z,r,g,b
+            
+
+
+        discard voxels if they are below box has below a threshold of voxels (100)
+
+
+
+GENERATION FLOW
+    Read file of data
+        each line of file has  X,Y,Z,R,G,B,Label
+        each file is a separate location
