@@ -19,10 +19,11 @@ COLLECT FLOW
             80 total blocks
             4096  points per block
             6 = x,y,z,r,g,b
-            
+        
+        final output is x,y,z,r,g,b,Label
 
 
-        discard voxels if they are below box has below a threshold of voxels (100)
+        discard voxels if they fewer points than a threshold (100)
 
 
 
@@ -30,3 +31,7 @@ GENERATION FLOW
     Read file of data
         each line of file has  X,Y,Z,R,G,B,Label
         each file is a separate location
+
+    
+        index 6,7,8 are the absolute values of x,y,z.
+            i.e X' = X / max value of X in data for that area
