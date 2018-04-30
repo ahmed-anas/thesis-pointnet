@@ -54,6 +54,7 @@ def collect_point_label(anno_path, out_filename, file_format='txt'):
         if cls not in g_classes: # note: in some room there is 'staris' class..
             cls = 'clutter'
         points = np.loadtxt(f)
+        print('--reading : ',f)
         labels = np.ones((points.shape[0],1)) * g_class2label[cls]
         points_list.append(np.concatenate([points, labels], 1)) # Nx7
     
