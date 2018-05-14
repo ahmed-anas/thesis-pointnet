@@ -16,7 +16,7 @@ def placeholder_inputs(batch_size, num_point):
                                 shape=(batch_size, num_point))
     return pointclouds_pl, labels_pl
 
-def get_model(point_cloud, is_training, bn_decay=None):
+def get_model(point_cloud, is_training, bn_decay=None, num_classes = 13):
     """ ConvNet baseline, input is BxNx3 gray image """
     batch_size = point_cloud.get_shape()[0].value
     num_point = point_cloud.get_shape()[1].value
@@ -51,7 +51,7 @@ def get_model(point_cloud, is_training, bn_decay=None):
     net = tf_util.conv2d(net, 256, [1,1], padding='VALID', stride=[1,1],
                          bn=True, is_training=is_training, scope='conv7')
     net = tf_util.dropout(net, keep_prob=0.7, is_training=is_training, scope='dp1')
-    net = tf_util.conv2d(net, 13, [1,1], padding='VALID', stride=[1,1],
+    net = tf_util.conv2d(net, num_classes, [1,1], padding='VALID', stride=[1,1],
                          activation_fn=None, scope='conv8')
     net = tf.squeeze(net, [2])
 

@@ -7,12 +7,13 @@ sys.path.append(BASE_DIR)
 sys.path.append(os.path.join(ROOT_DIR, 'utils'))
 import data_prep_util
 import indoor3d_util
+from random import shuffle
 
 # Constants
 data_dir = os.path.join(ROOT_DIR, 'data')
 #indoor3d_data_dir = os.path.join(data_dir, 'stanford_indoor3d')
 NUM_POINT = 4096
-H5_BATCH_SIZE = 1000
+H5_BATCH_SIZE = 100
 data_dim = [NUM_POINT, 9]
 label_dim = [NUM_POINT]
 data_dtype = 'float32'
@@ -33,13 +34,24 @@ video_recording_dirs = [os.path.join(APOLLO_DATA_DEPTH_DIR, dir_name) for dir_na
 data_label_files = [os.path.join(data_label_file_path, data_file) for data_file in os.listdir(data_label_file_path) ]
 
 
+class_to_train_mappings =  [[int(line.rstrip().split(',')[0]),int(line.rstrip().split(',')[1])] for line in open('data/annotation-apollo_scape_label-train_depth-apollo-1.5/class-to-train-mappings.txt')]
 
-output_dir = os.path.join(data_dir, 'apollo_sem_seg_hdf5_data')
+
+
+    
+
+#remove shuffle
+shuffle(data_label_files)
+
+
+# output_dir = os.path.join(data_dir, 'apollo_sem_seg_hdf5_data')
+output_dir = os.path.join(data_dir, 'apollo_sem_seg_hdf5_data_test')
 if not os.path.exists(output_dir):
     os.mkdir(output_dir)
 output_filename_prefix = os.path.join(output_dir, 'ply_data_all')
 output_room_filelist = os.path.join(output_dir, 'room_filelist.txt')
 fout_room = open(output_room_filelist, 'w')
+fout_labels = open(os.path.join(output_dir, 'class_mappings.txt'), 'w')
 
 # --------------------------------------
 # ----- BATCH WRITE TO HDF5 -----
@@ -84,16 +96,77 @@ def insert_batch(data, label, last_batch=False):
 
 
 sample_cnt = 0
+
+label_selections = [82,
+    83,
+    84,
+    #86,
+    98,
+    #100,
+    50,
+    #40,
+    #81,
+    #35,
+    #36,
+    38,
+    #39,
+    33,
+    33,
+    #67
+    ]
+
+
+select_class_id_mappings = np.copy(label_selections)
+
+for from_number,to_number in class_to_train_mappings:
+    select_class_id_mappings[select_class_id_mappings == from_number] = to_number
+
+select_class_id_mappings = np.unique(select_class_id_mappings)
+select_class_id_mappings.sort()
+for class_id in select_class_id_mappings:
+    fout_labels.write(str(class_id) + '\n')
+fout_labels.close()
+
+
+selected_class_id_to_train_id_conversion = []
+
+for from_number,to_number in class_to_train_mappings:
+    if to_number in select_class_id_mappings:
+        selected_class_id_to_train_id_conversion.append([from_number, np.where(select_class_id_mappings == to_number)[0][0]])
+
+
+total_seen_class = [0 for _ in range(len(select_class_id_mappings))]
+
+
+
+#for i, data_label_filename in enumerate(data_label_files):
 for i, data_label_filename in enumerate(data_label_files):
+    
     print(data_label_filename)
-    data, label = indoor3d_util.room2blocks_wrapper_normalized(data_label_filename, NUM_POINT, block_size=32.0, stride=16,
-                                                 random_sample=False, sample_num=None)
+    data, label = indoor3d_util.room2blocks_wrapper_normalized(data_label_filename, NUM_POINT, block_size=256.0, stride=128,
+                                                 random_sample=False, sample_num=None, label_selections=label_selections)
+
+    
+    
+    for from_val, to_val in selected_class_id_to_train_id_conversion:
+        idxs = label == from_val
+        label[idxs] = to_val
+        
+        total_seen_class[to_val] += np.sum(idxs)
+
     print('{0}, {1}'.format(data.shape, label.shape))
     for _ in range(data.shape[0]):
         fout_room.write(os.path.basename(data_label_filename)[0:-4]+'\n')
 
     sample_cnt += data.shape[0]
+
+    if i > 300:
+        insert_batch(data, label, True)
+        break
+
     insert_batch(data, label, i == len(data_label_files)-1)
 
 fout_room.close()
 print("Total samples: {0}".format(sample_cnt))
+print("total instaesnc: ")
+print(total_seen_class)

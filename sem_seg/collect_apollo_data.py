@@ -51,10 +51,14 @@ for video_recording_dir in video_recording_dirs:
         x = depth_img.shape[0]
         y = depth_img.shape[1]
         output_array = np.empty((x,y,7))
+
+        total_ignored = 0
+
         for x_ite in range(x):
             for y_ite in range(y):
                 if x_ite % 200 == 0 and y_ite == 0:
                     print('%f done inserting', 100 * x_ite / x)
+                
                 output_array[x_ite][y_ite]=([
                     x_ite,
                     y_ite,
@@ -64,6 +68,9 @@ for video_recording_dir in video_recording_dirs:
                     rgb_img[x_ite][y_ite][2], 
                     label_img[x_ite][y_ite]
                 ])
+
+        total = x * y
+        print('total ignored: ', total_ignored, ' of ', total)
 
         data_label = np.concatenate(output_array, 0)
 

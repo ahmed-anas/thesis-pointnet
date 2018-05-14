@@ -12,7 +12,7 @@ import indoor3d_util
 data_dir = os.path.join(ROOT_DIR, 'data')
 indoor3d_data_dir = os.path.join(data_dir, 'stanford_indoor3d')
 NUM_POINT = 4096
-H5_BATCH_SIZE = 1000
+H5_BATCH_SIZE = 100
 data_dim = [NUM_POINT, 9]
 label_dim = [NUM_POINT]
 data_dtype = 'float32'

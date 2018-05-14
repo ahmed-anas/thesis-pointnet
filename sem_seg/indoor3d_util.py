@@ -159,8 +159,12 @@ def room2blocks(data, label, num_point, block_size=1.0, stride=1.0,
     xbeg_list = []
     ybeg_list = []
     if not random_sample:
-        num_block_x = int(np.ceil((limit[0] - block_size) / stride)) + 1
-        num_block_y = int(np.ceil((limit[1] - block_size) / stride)) + 1
+        try:
+            num_block_x = int(np.ceil((limit[0] - block_size) / stride)) + 1
+            num_block_y = int(np.ceil((limit[1] - block_size) / stride)) + 1
+        except:
+            num_block_x = int(np.ceil((limit[0] - block_size) / stride)) + 1
+            num_block_y = int(np.ceil((limit[1] - block_size) / stride)) + 1
         for i in range(num_block_x):
             for j in range(num_block_y):
                 xbeg_list.append(i*stride)
@@ -197,6 +201,9 @@ def room2blocks(data, label, num_point, block_size=1.0, stride=1.0,
            sample_data_label(block_data, block_label, num_point)
        block_data_list.append(np.expand_dims(block_data_sampled, 0))
        block_label_list.append(np.expand_dims(block_label_sampled, 0))
+
+       if block_label_sampled.min() != block_label_sampled.max():
+           x = 1;       
             
     return np.concatenate(block_data_list, 0), \
            np.concatenate(block_label_list, 0)
@@ -252,8 +259,9 @@ def room2blocks_plus_normalized(data_label, num_point, block_size, stride,
     return new_data_batch, label_batch
 
 
+
 def room2blocks_wrapper_normalized(data_label_filename, num_point, block_size=1.0, stride=1.0,
-                                   random_sample=False, sample_num=None, sample_aug=1):
+                                   random_sample=False, sample_num=None, sample_aug=1, label_selections = None):
     if data_label_filename[-3:] == 'txt':
         data_label = np.loadtxt(data_label_filename)
     elif data_label_filename[-3:] == 'npy':
@@ -261,8 +269,14 @@ def room2blocks_wrapper_normalized(data_label_filename, num_point, block_size=1.
     else:
         print('Unknown file type! exiting.')
         exit()
+
+    if label_selections is not None:
+        data_label = np.asarray([row for row in data_label if row[6] in label_selections])
     return room2blocks_plus_normalized(data_label, num_point, block_size, stride,
                                        random_sample, sample_num, sample_aug)
+
+
+
 
 def room2samples(data, label, sample_num_point):
     """ Prepare whole room samples.
