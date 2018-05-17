@@ -1,3 +1,4 @@
+import math
 import argparse
 import math
 import h5py
@@ -15,6 +16,8 @@ sys.path.append(os.path.join(ROOT_DIR, 'utils'))
 import provider
 import tf_util
 from model import *
+
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
@@ -42,6 +45,7 @@ OPTIMIZER = FLAGS.optimizer
 DECAY_STEP = FLAGS.decay_step
 DECAY_RATE = FLAGS.decay_rate
 
+
 LOG_DIR = FLAGS.log_dir
 if not os.path.exists(LOG_DIR): os.mkdir(LOG_DIR)
 os.system('cp model.py %s' % (LOG_DIR)) # bkp of model def
@@ -61,7 +65,7 @@ BN_DECAY_CLIP = 0.99
 HOSTNAME = socket.gethostname()
 
 DIR_PATH_H5 = os.path.join(ROOT_DIR, 'data/apollo_sem_seg_hdf5_data_test')
-ALL_FILES = [os.path.join(DIR_PATH_H5, file_h5) for file_h5 in os.listdir(DIR_PATH_H5) if file_h5[-2:] == 'h5']
+H5_FILES = [os.path.join(DIR_PATH_H5, file_h5) for file_h5 in os.listdir(DIR_PATH_H5) if file_h5[-2:] == 'h5']
 
 
 #ALL_FILES = provider.getDataFiles('data/apollo_sem_seg_hdf5_data')
@@ -69,10 +73,14 @@ room_filelist = [line.rstrip() for line in open('data/apollo_sem_seg_hdf5_data_t
 classMappings = [line.rstrip() for line in open('data/apollo_sem_seg_hdf5_data_test/class_mappings.txt')]
 NUM_CLASSES = len(classMappings)
 
+
+
+BATCH_SIZE_H5 = provider.loadDataFile(H5_FILES[0])[0].shape[0]
+
 # Load ALL data
 data_batch_list = []
 label_batch_list = []
-for i,h5_filename in enumerate(ALL_FILES):
+for i,h5_filename in enumerate(H5_FILES):
     if i%10 == 0:
         print("loading h5 file: " , i, h5_filename)
     
@@ -87,23 +95,34 @@ label_batch_list = None
 print(data_batches.shape)
 print(label_batches.shape)
 
+
+data_for_training = np.empty(len(room_filelist), dtype=bool)
+
+
 test_recordings = [str(int(recording_number)).zfill(3) for recording_number in FLAGS.test_recordings.split(',')]
 #test_recordings = 'Area_'+str(FLAGS.test_area)
 
 train_idxs = []
-test_idxs = []
+test_idxs = [] 
+
+total_training_data = 0
+total_testing_data = 0
 for i,room_name in enumerate(room_filelist):
 
     if i >= data_batches.shape[0]:
         break
     #remove this
-    if i%3==0:
+    if i%4==0:
+        total_testing_data += 1
+        data_for_training[i] = False
     #if room_name[6:9] in test_recordings:
         test_idxs.append(i)
     else:
+        total_training_data += 1
+        data_for_training[i] = True
         train_idxs.append(i)
 
-
+ 
 train_data = data_batches[train_idxs,...]
 train_label = label_batches[train_idxs]
 test_data = data_batches[test_idxs,...]
@@ -113,6 +132,69 @@ label_batches = None
 print(train_data.shape, train_label.shape)
 print(test_data.shape, test_label.shape)
 
+
+current_train_idx = 0
+def get_train_data(amount):
+    global current_train_idx
+
+    local_data_batch_list = []
+    local_label_batch_list = []
+
+    total_retrieved = 0
+
+
+    last_loaded_file_index = None
+    last_loaded_file_data = None
+    last_loaded_file_label = None
+
+    while total_retrieved < amount:
+     
+
+        #total_retrieved += 1
+
+        h5_fileindex = int(math.floor( current_train_idx / float(BATCH_SIZE_H5) ))
+
+
+        if last_loaded_file_index != h5_fileindex:
+            h5_filename = H5_FILES[h5_fileindex]
+            last_loaded_file_data, last_loaded_file_label = provider.loadDataFile(h5_filename)
+            last_loaded_file_index = h5_fileindex
+
+
+        amount_to_retrieve = amount - total_retrieved
+
+        start_idx_batch = current_train_idx - (h5_fileindex * BATCH_SIZE_H5)
+
+        h5_remaining_batch_size = BATCH_SIZE_H5 - start_idx_batch
+
+        amount_to_fetch_from_batch = min(amount_to_retrieve, h5_remaining_batch_size)
+
+        start_idx_total = current_train_idx
+        end_idx_total = start_idx_total + amount_to_fetch_from_batch
+
+        
+        end_idx_batch = start_idx_batch + amount_to_fetch_from_batch 
+
+        try:
+            data_batch = (last_loaded_file_data[start_idx_batch:end_idx_batch]) [data_for_training[start_idx_total:end_idx_total],:,:]
+            label_batch = (last_loaded_file_label[start_idx_batch:end_idx_batch]) [data_for_training[start_idx_total:end_idx_total],:]
+        except:
+            data_batch = (last_loaded_file_data[start_idx_batch:end_idx_batch]) [data_for_training[start_idx_total:end_idx_total],:,:]
+            label_batch = (last_loaded_file_label[start_idx_batch:end_idx_batch]) [data_for_training[start_idx_total:end_idx_total],:]
+
+        total_retrieved += data_batch.shape[0]
+        current_train_idx += amount_to_fetch_from_batch
+
+        local_data_batch_list.append(data_batch)
+        local_label_batch_list.append(label_batch)
+
+    local_data_batches = np.concatenate(local_data_batch_list, 0)
+    local_label_batches = np.concatenate(local_label_batch_list, 0)
+
+    return local_data_batches, local_label_batches
+
+
+    
 
 
 
@@ -221,9 +303,13 @@ def train_one_epoch(sess, ops, train_writer):
     
     log_string('----')
     current_data, current_label, _ = provider.shuffle_data(train_data[:,0:NUM_POINT,:], train_label) 
+    #remove this 2
+    current_data = train_data
+    current_label = train_label
     
     file_size = current_data.shape[0]
     num_batches = file_size // BATCH_SIZE
+    num_batches = total_training_data / BATCH_SIZE
     
     total_correct = 0
     total_seen = 0
@@ -234,6 +320,17 @@ def train_one_epoch(sess, ops, train_writer):
             print('Current batch/total batch num: %d/%d'%(batch_idx,num_batches))
         start_idx = batch_idx * BATCH_SIZE
         end_idx = (batch_idx+1) * BATCH_SIZE
+
+        #remove
+        if batch_idx == 6:
+            z = 1231231231
+
+        data_for_loop, label_for_loop = get_train_data(BATCH_SIZE)
+
+
+        #remove
+        if sum(sum(sum(data_for_loop == current_data[start_idx:end_idx, :, :]))) != 442368:
+            z = 32131
         
         feed_dict = {ops['pointclouds_pl']: current_data[start_idx:end_idx, :, :],
                      ops['labels_pl']: current_label[start_idx:end_idx],

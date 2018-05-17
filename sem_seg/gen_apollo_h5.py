@@ -79,7 +79,7 @@ def insert_batch(data, label, last_batch=False):
            h5_batch_data[buffer_size:buffer_size+capacity, ...] = data[0:capacity, ...] 
            h5_batch_label[buffer_size:buffer_size+capacity, ...] = label[0:capacity, ...] 
         # Save batch data and label to h5 file, reset buffer_size
-        h5_filename =  output_filename_prefix + '_' + str(h5_index) + '.h5'
+        h5_filename =  output_filename_prefix + '_' + str(h5_index).zfill(6) + '.h5'
         data_prep_util.save_h5(h5_filename, h5_batch_data, h5_batch_label, data_dtype, label_dtype) 
         print('Stored {0} with size {1}'.format(h5_filename, h5_batch_data.shape[0]))
         h5_index += 1
@@ -87,7 +87,7 @@ def insert_batch(data, label, last_batch=False):
         # recursive call
         insert_batch(data[capacity:, ...], label[capacity:, ...], last_batch)
     if last_batch and buffer_size > 0:
-        h5_filename =  output_filename_prefix + '_' + str(h5_index) + '.h5'
+        h5_filename =  output_filename_prefix + '_' + str(h5_index).zfill(6) + '.h5'
         data_prep_util.save_h5(h5_filename, h5_batch_data[0:buffer_size, ...], h5_batch_label[0:buffer_size, ...], data_dtype, label_dtype)
         print('Stored {0} with size {1}'.format(h5_filename, buffer_size))
         h5_index += 1
@@ -97,22 +97,26 @@ def insert_batch(data, label, last_batch=False):
 
 sample_cnt = 0
 
-label_selections = [82,
-    83,
-    84,
-    #86,
-    98,
-    #100,
-    50,
-    #40,
-    #81,
-    #35,
-    #36,
-    38,
-    #39,
-    33,
-    33,
-    #67
+label_selections = [
+        33,
+        161,
+
+        #36,
+        #164,
+
+        #39,
+        #167,
+
+        113,
+
+
+
+        49,
+
+        84,
+
+        97
+
     ]
 
 
@@ -142,7 +146,7 @@ total_seen_class = [0 for _ in range(len(select_class_id_mappings))]
 #for i, data_label_filename in enumerate(data_label_files):
 for i, data_label_filename in enumerate(data_label_files):
     
-    print(data_label_filename)
+    #print(data_label_filename)
     data, label = indoor3d_util.room2blocks_wrapper_normalized(data_label_filename, NUM_POINT, block_size=256.0, stride=128,
                                                  random_sample=False, sample_num=None, label_selections=label_selections)
 
@@ -160,7 +164,7 @@ for i, data_label_filename in enumerate(data_label_files):
 
     sample_cnt += data.shape[0]
 
-    if i > 300:
+    if i > 65:
         insert_batch(data, label, True)
         break
 
