@@ -40,7 +40,7 @@ class_to_train_mappings =  [[int(line.rstrip().split(',')[0]),int(line.rstrip().
 
     
 
-#remove shuffle
+
 shuffle(data_label_files)
 
 

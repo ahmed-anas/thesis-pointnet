@@ -31,6 +31,8 @@ parser.add_argument('--optimizer', default='momentum', help='adam or momentum [d
 parser.add_argument('--decay_step', type=int, default=300000, help='Decay step for lr decay [default: 300000]')
 parser.add_argument('--decay_rate', type=float, default=0.5, help='Decay rate for lr decay [default: 0.5]')
 parser.add_argument('--test_recordings', type=str, default='11', help='Which recording numbers to use for test, i.e "1,2", "1", "3", "3,4,5" [default: 11]')
+parser.add_argument('--use_saved_model', type=str, default='no', help='yes or no')
+
 FLAGS = parser.parse_args()
 
 
@@ -47,7 +49,17 @@ DECAY_RATE = FLAGS.decay_rate
 
 
 LOG_DIR = FLAGS.log_dir
-if not os.path.exists(LOG_DIR): os.mkdir(LOG_DIR)
+
+if not os.path.exists(LOG_DIR): 
+    os.mkdir(LOG_DIR)
+
+USE_SAVED_MODEL = False
+if FLAGS.use_saved_model == 'yes':
+    USE_SAVED_MODEL = True
+elif FLAGS.use_saved_model != 'no':
+    raise ValueError('use_saved_model param must be eitehr yes or no')
+
+
 os.system('cp model.py %s' % (LOG_DIR)) # bkp of model def
 os.system('cp train.py %s' % (LOG_DIR)) # bkp of train procedure
 LOG_FOUT = open(os.path.join(LOG_DIR, 'log_train.txt'), 'w')
@@ -134,25 +146,71 @@ print(test_data.shape, test_label.shape)
 
 
 current_train_idx = 0
-def get_train_data(amount):
+current_test_idx = 0
+last_loaded_file_index = None
+last_loaded_file_data = None
+last_loaded_file_label = None
+def reset_train_data():
     global current_train_idx
+    current_train_idx = 0
+
+def can_get_test_data():
+
+    global current_test_idx
+    return current_test_idx <  data_for_training.shape[0]
+def can_get_train_data():
+    global current_train_idx
+    global last_loaded_file_index
+    global last_loaded_file_data
+    global last_loaded_file_label
+
+    return current_train_idx <  data_for_training.shape[0]
+
+    # h5_fileindex = int(math.floor( current_train_idx / float(BATCH_SIZE_H5) ))
+
+    # if h5_fileindex + 1 < len(H5_FILES):
+    #     return True
+    
+    # if last_loaded_file_index != h5_fileindex:
+    #     h5_filename = H5_FILES[h5_fileindex]
+    #     last_loaded_file_data, last_loaded_file_label = provider.loadDataFile(h5_filename)
+    #     last_loaded_file_index = h5_fileindex
+
+
+
+    # start_idx_batch = current_train_idx - (h5_fileindex * BATCH_SIZE_H5)
+ 
+    # h5_remaining_batch_size = BATCH_SIZE_H5 - start_idx_batch
+
+    # return h5_remaining_batch_size > 0
+
+
+
+def get_train_or_test_data(amount, for_training):
+    global current_train_idx
+    global current_test_idx
+
+    global last_loaded_file_index
+    global last_loaded_file_data
+    global last_loaded_file_label
 
     local_data_batch_list = []
     local_label_batch_list = []
 
     total_retrieved = 0
 
+    if for_training:
+        index_for_run = current_train_idx
+    else:            
+        index_for_run = current_test_idx
 
-    last_loaded_file_index = None
-    last_loaded_file_data = None
-    last_loaded_file_label = None
 
-    while total_retrieved < amount:
+    while total_retrieved < amount and index_for_run <  data_for_training.shape[0]:
      
 
         #total_retrieved += 1
 
-        h5_fileindex = int(math.floor( current_train_idx / float(BATCH_SIZE_H5) ))
+        h5_fileindex = int(math.floor( index_for_run / float(BATCH_SIZE_H5) ))
 
 
         if last_loaded_file_index != h5_fileindex:
@@ -163,33 +221,42 @@ def get_train_data(amount):
 
         amount_to_retrieve = amount - total_retrieved
 
-        start_idx_batch = current_train_idx - (h5_fileindex * BATCH_SIZE_H5)
+        start_idx_batch = index_for_run - (h5_fileindex * BATCH_SIZE_H5)
 
         h5_remaining_batch_size = BATCH_SIZE_H5 - start_idx_batch
 
         amount_to_fetch_from_batch = min(amount_to_retrieve, h5_remaining_batch_size)
 
-        start_idx_total = current_train_idx
+        start_idx_total = index_for_run
         end_idx_total = start_idx_total + amount_to_fetch_from_batch
 
         
         end_idx_batch = start_idx_batch + amount_to_fetch_from_batch 
 
-        try:
+
+        if for_training:
             data_batch = (last_loaded_file_data[start_idx_batch:end_idx_batch]) [data_for_training[start_idx_total:end_idx_total],:,:]
             label_batch = (last_loaded_file_label[start_idx_batch:end_idx_batch]) [data_for_training[start_idx_total:end_idx_total],:]
-        except:
-            data_batch = (last_loaded_file_data[start_idx_batch:end_idx_batch]) [data_for_training[start_idx_total:end_idx_total],:,:]
-            label_batch = (last_loaded_file_label[start_idx_batch:end_idx_batch]) [data_for_training[start_idx_total:end_idx_total],:]
+        else:
+            arr = data_for_training[start_idx_total:end_idx_total] == False
+
+            data_batch = (last_loaded_file_data[start_idx_batch:end_idx_batch]) [arr,:,:]
+            label_batch = (last_loaded_file_label[start_idx_batch:end_idx_batch]) [arr,:]
 
         total_retrieved += data_batch.shape[0]
-        current_train_idx += amount_to_fetch_from_batch
+        index_for_run += amount_to_fetch_from_batch
 
         local_data_batch_list.append(data_batch)
         local_label_batch_list.append(label_batch)
 
     local_data_batches = np.concatenate(local_data_batch_list, 0)
     local_label_batches = np.concatenate(local_label_batch_list, 0)
+
+
+    if for_training:
+        current_train_idx = index_for_run
+    else:
+        current_test_idx = index_for_run
 
     return local_data_batches, local_label_batches
 
@@ -224,7 +291,7 @@ def get_bn_decay(batch):
     bn_decay = tf.minimum(BN_DECAY_CLIP, 1 - bn_momentum)
     return bn_decay
 
-def train():
+def train(use_saved_model ):
     with tf.Graph().as_default():
         with tf.device('/gpu:'+str(GPU_INDEX)):
             pointclouds_pl, labels_pl = placeholder_inputs(BATCH_SIZE, NUM_POINT)
@@ -257,6 +324,8 @@ def train():
             # Add ops to save and restore all the variables.
             saver = tf.train.Saver()
             
+
+
         # Create a session
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
@@ -264,15 +333,22 @@ def train():
         config.log_device_placement = True
         sess = tf.Session(config=config)
 
+
+        if use_saved_model:
+            saver = tf.train.import_meta_graph(os.path.join(LOG_DIR, "model.ckpt.meta"))
+            saver.restore(sess, LOG_DIR)
+
+        else:
+            # Init variables
+            init = tf.global_variables_initializer()
+            sess.run(init, {is_training_pl:True})
+
         # Add summary writers
         merged = tf.summary.merge_all()
         train_writer = tf.summary.FileWriter(os.path.join(LOG_DIR, 'train'),
                                   sess.graph)
         test_writer = tf.summary.FileWriter(os.path.join(LOG_DIR, 'test'))
 
-        # Init variables
-        init = tf.global_variables_initializer()
-        sess.run(init, {is_training_pl:True})
 
         ops = {'pointclouds_pl': pointclouds_pl,
                'labels_pl': labels_pl,
@@ -298,15 +374,15 @@ def train():
 
 
 def train_one_epoch(sess, ops, train_writer):
+    reset_train_data()
     """ ops: dict mapping from string to tf ops """
     is_training = True
     
     log_string('----')
-    current_data, current_label, _ = provider.shuffle_data(train_data[:,0:NUM_POINT,:], train_label) 
-    #remove this 2
+
+    #checking to confirm get_train_data is functioning correctly
     current_data = train_data
     current_label = train_label
-    
     file_size = current_data.shape[0]
     num_batches = file_size // BATCH_SIZE
     num_batches = total_training_data / BATCH_SIZE
@@ -315,35 +391,46 @@ def train_one_epoch(sess, ops, train_writer):
     total_seen = 0
     loss_sum = 0
     
-    for batch_idx in range(num_batches):
-        if batch_idx % 100 == 0:
-            print('Current batch/total batch num: %d/%d'%(batch_idx,num_batches))
+    batch_idx = -1
+    # for batch_idx in range(num_batches):
+    while can_get_train_data():
+        batch_idx += 1
+        
+        if batch_idx % 10 == 0:
+            print('Current batch: %d'%(batch_idx))
         start_idx = batch_idx * BATCH_SIZE
         end_idx = (batch_idx+1) * BATCH_SIZE
 
-        #remove
-        if batch_idx == 6:
-            z = 1231231231
+        if batch_idx == 118:
+            z=123123
 
-        data_for_loop, label_for_loop = get_train_data(BATCH_SIZE)
-
-
-        #remove
-        if sum(sum(sum(data_for_loop == current_data[start_idx:end_idx, :, :]))) != 442368:
-            z = 32131
+        data_for_loop, label_for_loop = get_train_or_test_data(BATCH_SIZE, True)
         
-        feed_dict = {ops['pointclouds_pl']: current_data[start_idx:end_idx, :, :],
-                     ops['labels_pl']: current_label[start_idx:end_idx],
+
+        #checking to confirm get_train_data is functioning correctly
+        # check_data_for_loop = current_data[start_idx:end_idx, :, :]
+        # check_label_for_loop = current_label[start_idx:end_idx]
+        # if sum(sum(sum(data_for_loop == check_data_for_loop))) != 442368:
+        #     z = 32131
+        #     log_string('check data for loop not match what it should be')
+        #     raise ValueError('check data for loop not match what it should be')
+        
+
+        #remove below comments
+        
+        feed_dict = {ops['pointclouds_pl']: data_for_loop,
+                     ops['labels_pl']: label_for_loop,
                      ops['is_training_pl']: is_training,}
         summary, step, _, loss_val, pred_val = sess.run([ops['merged'], ops['step'], ops['train_op'], ops['loss'], ops['pred']],
                                          feed_dict=feed_dict)
         train_writer.add_summary(summary, step)
         pred_val = np.argmax(pred_val, 2)
-        correct = np.sum(pred_val == current_label[start_idx:end_idx])
+        correct = np.sum(pred_val == label_for_loop)
         total_correct += correct
         total_seen += (BATCH_SIZE*NUM_POINT)
         loss_sum += loss_val
-        #log_string('current loss: %f' % (loss_val ))
+
+
         
     
     log_string('mean loss: %f' % (loss_sum / float(num_batches)))
@@ -360,35 +447,42 @@ def eval_one_epoch(sess, ops, test_writer):
     total_correct_class = [0 for _ in range(NUM_CLASSES)]
     
     log_string('----')
-    current_data = test_data[:,0:NUM_POINT,:]
-    current_label = np.squeeze(test_label)
+    # current_data = test_data[:,0:NUM_POINT,:]
+    # current_label = np.squeeze(test_label)
     
-    file_size = current_data.shape[0]
-    num_batches = file_size // BATCH_SIZE
+    # file_size = current_data.shape[0]
+    # num_batches = file_size // BATCH_SIZE
     
-    for batch_idx in range(num_batches):
+    batch_idx = -1
+    # for batch_idx in range(num_batches):
+    while can_get_test_data():
+        batch_idx += 1
+
+
+        data_for_loop, label_for_loop = get_train_or_test_data(BATCH_SIZE, False)
+
         start_idx = batch_idx * BATCH_SIZE
         end_idx = (batch_idx+1) * BATCH_SIZE
 
-        feed_dict = {ops['pointclouds_pl']: current_data[start_idx:end_idx, :, :],
-                     ops['labels_pl']: current_label[start_idx:end_idx],
+        feed_dict = {ops['pointclouds_pl']: data_for_loop,
+                     ops['labels_pl']: label_for_loop,
                      ops['is_training_pl']: is_training}
         summary, step, loss_val, pred_val = sess.run([ops['merged'], ops['step'], ops['loss'], ops['pred']],
                                       feed_dict=feed_dict)
         test_writer.add_summary(summary, step)
         pred_val = np.argmax(pred_val, 2)
-        correct = np.sum(pred_val == current_label[start_idx:end_idx])
+        correct = np.sum(pred_val == label_for_loop)
         total_correct += correct
         total_seen += (BATCH_SIZE*NUM_POINT)
         loss_sum += (loss_val*BATCH_SIZE)
         for i in range(start_idx, end_idx):
             for j in range(NUM_POINT):
                 try: 
-                    l = current_label[i, j]
+                    l = label_for_loop[i - start_idx, j - start_idx]
                     total_seen_class[l] += 1
                     total_correct_class[l] += (pred_val[i-start_idx, j] == l)
                 except: 
-                    l = current_label[i, j]
+                    l = label_for_loop[i - start_idx, j - start_idx]
                     total_seen_class[l] += 1
                     total_correct_class[l] += (pred_val[i-start_idx, j] == l)
             
@@ -402,5 +496,5 @@ def eval_one_epoch(sess, ops, test_writer):
 
 
 if __name__ == "__main__":
-    train()
+    train(USE_SAVED_MODEL)
     LOG_FOUT.close()
