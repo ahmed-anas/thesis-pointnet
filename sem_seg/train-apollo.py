@@ -35,11 +35,10 @@ parser.add_argument('--use_saved_model', type=str, default='no', help='yes or no
 
 FLAGS = parser.parse_args()
 
-
+LOAD_FULL_DATA  = False
 BATCH_SIZE = FLAGS.batch_size
 NUM_POINT = FLAGS.num_point
 MAX_EPOCH = FLAGS.max_epoch
-NUM_POINT = FLAGS.num_point
 BASE_LEARNING_RATE = FLAGS.learning_rate
 GPU_INDEX = FLAGS.gpu
 MOMENTUM = FLAGS.momentum
@@ -56,6 +55,7 @@ if not os.path.exists(LOG_DIR):
 USE_SAVED_MODEL = False
 if FLAGS.use_saved_model == 'yes':
     USE_SAVED_MODEL = True
+    print('using saved model')
 elif FLAGS.use_saved_model != 'no':
     raise ValueError('use_saved_model param must be eitehr yes or no')
 
@@ -90,22 +90,28 @@ NUM_CLASSES = len(classMappings)
 BATCH_SIZE_H5 = provider.loadDataFile(H5_FILES[0])[0].shape[0]
 
 # Load ALL data
-data_batch_list = []
-label_batch_list = []
-for i,h5_filename in enumerate(H5_FILES):
-    if i%10 == 0:
-        print("loading h5 file: " , i, h5_filename)
-    
-    data_batch, label_batch = provider.loadDataFile(h5_filename)
-    data_batch_list.append(data_batch)
-    label_batch_list.append(label_batch)
-print('---all loaded---')
-data_batches = np.concatenate(data_batch_list, 0)
-data_batch_list = None
-label_batches = np.concatenate(label_batch_list, 0)
-label_batch_list = None
-print(data_batches.shape)
-print(label_batches.shape)
+
+# if LOAD_FULL_DATA: 
+#     data_batch_list = []
+#     label_batch_list = []
+#     for i,h5_filename in enumerate(H5_FILES):
+#         if i%10 == 0:
+#             print("loading h5 file: " , i, h5_filename)
+        
+#         data_batch, label_batch = provider.loadDataFile(h5_filename)
+#         data_batch_list.append(data_batch)
+#         label_batch_list.append(label_batch)
+
+
+
+# if LOAD_FULL_DATA: 
+#     print('---all loaded---')
+#     data_batches = np.concatenate(data_batch_list, 0)
+#     data_batch_list = None
+#     label_batches = np.concatenate(label_batch_list, 0)
+#     label_batch_list = None
+#     print(data_batches.shape)
+#     print(label_batches.shape)
 
 
 data_for_training = np.empty(len(room_filelist), dtype=bool)
@@ -114,35 +120,42 @@ data_for_training = np.empty(len(room_filelist), dtype=bool)
 test_recordings = [str(int(recording_number)).zfill(3) for recording_number in FLAGS.test_recordings.split(',')]
 #test_recordings = 'Area_'+str(FLAGS.test_area)
 
-train_idxs = []
-test_idxs = [] 
+
+# if LOAD_FULL_DATA: 
+#     train_idxs = []
+#     test_idxs = [] 
 
 total_training_data = 0
 total_testing_data = 0
 for i,room_name in enumerate(room_filelist):
 
-    if i >= data_batches.shape[0]:
-        break
     #remove this
     if i%4==0:
         total_testing_data += 1
         data_for_training[i] = False
     #if room_name[6:9] in test_recordings:
-        test_idxs.append(i)
+
+
+        # if LOAD_FULL_DATA: 
+        #     test_idxs.append(i)
     else:
         total_training_data += 1
         data_for_training[i] = True
-        train_idxs.append(i)
 
- 
-train_data = data_batches[train_idxs,...]
-train_label = label_batches[train_idxs]
-test_data = data_batches[test_idxs,...]
-test_label = label_batches[test_idxs]
-data_batches = None
-label_batches = None
-print(train_data.shape, train_label.shape)
-print(test_data.shape, test_label.shape)
+
+        # if LOAD_FULL_DATA: 
+        #     train_idxs.append(i)
+
+
+# if LOAD_FULL_DATA: 
+#     train_data = data_batches[train_idxs,...]
+#     train_label = label_batches[train_idxs]
+#     test_data = data_batches[test_idxs,...]
+#     test_label = label_batches[test_idxs]
+#     data_batches = None
+#     label_batches = None
+#     print(train_data.shape, train_label.shape)
+#     print(test_data.shape, test_label.shape)
 
 
 current_train_idx = 0
@@ -153,6 +166,10 @@ last_loaded_file_label = None
 def reset_train_data():
     global current_train_idx
     current_train_idx = 0
+
+def reset_test_data():
+    global current_test_idx
+    current_test_idx = 0
 
 def can_get_test_data():
 
@@ -367,7 +384,7 @@ def train(use_saved_model ):
             eval_one_epoch(sess, ops, test_writer)
             
             # Save the variables to disk.
-            if epoch % 10 == 0:
+            if epoch % 2 == 0:
                 save_path = saver.save(sess, os.path.join(LOG_DIR, "model.ckpt"))
                 log_string("Model saved in file: %s" % save_path)
 
@@ -381,11 +398,13 @@ def train_one_epoch(sess, ops, train_writer):
     log_string('----')
 
     #checking to confirm get_train_data is functioning correctly
-    current_data = train_data
-    current_label = train_label
-    file_size = current_data.shape[0]
-    num_batches = file_size // BATCH_SIZE
-    num_batches = total_training_data / BATCH_SIZE
+
+    # if LOAD_FULL_DATA: 
+    #     current_data = train_data
+    #     current_label = train_label
+    #     file_size = current_data.shape[0]
+    #     num_batches = file_size // BATCH_SIZE
+    #     num_batches = total_training_data / BATCH_SIZE
     
     total_correct = 0
     total_seen = 0
@@ -405,7 +424,10 @@ def train_one_epoch(sess, ops, train_writer):
             z=123123
 
         data_for_loop, label_for_loop = get_train_or_test_data(BATCH_SIZE, True)
-        
+
+        #this is in case the last batch has insufficient blocks, so we simply bail
+        if not can_get_train_data():
+            break;    
 
         #checking to confirm get_train_data is functioning correctly
         # check_data_for_loop = current_data[start_idx:end_idx, :, :]
@@ -431,13 +453,14 @@ def train_one_epoch(sess, ops, train_writer):
         loss_sum += loss_val
 
 
-        
+    #remove below comments
     
-    log_string('mean loss: %f' % (loss_sum / float(num_batches)))
-    log_string('accuracy: %f' % (total_correct / float(total_seen)))
+    # log_string('mean loss: %f' % (loss_sum / float(num_batches)))
+    # log_string('accuracy: %f' % (total_correct / float(total_seen)))
 
         
 def eval_one_epoch(sess, ops, test_writer):
+    reset_test_data()
     """ ops: dict mapping from string to tf ops """
     is_training = False
     total_correct = 0
@@ -460,6 +483,10 @@ def eval_one_epoch(sess, ops, test_writer):
 
 
         data_for_loop, label_for_loop = get_train_or_test_data(BATCH_SIZE, False)
+
+        #this is in case the last batch has insufficient blocks
+        if not can_get_test_data():
+            break
 
         start_idx = batch_idx * BATCH_SIZE
         end_idx = (batch_idx+1) * BATCH_SIZE
