@@ -8,7 +8,11 @@
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
-            "program": "${file}"
+            "program": "${file}",
+            "args": [
+                "--use_saved_model",
+                "yes",
+            ]
         },
         {
             "name": "Python: Attach",

@@ -351,14 +351,14 @@ def train(use_saved_model ):
         sess = tf.Session(config=config)
 
 
-        if use_saved_model:
-            saver = tf.train.import_meta_graph(os.path.join(LOG_DIR, "model.ckpt.meta"))
-            saver.restore(sess, LOG_DIR)
 
-        else:
-            # Init variables
-            init = tf.global_variables_initializer()
-            sess.run(init, {is_training_pl:True})
+        # Init variables
+        init = tf.global_variables_initializer()
+        sess.run(init, {is_training_pl:True})
+
+
+        if use_saved_model:
+            saver.restore(sess, os.path.join(LOG_DIR,'model.ckpt'))
 
         # Add summary writers
         merged = tf.summary.merge_all()
@@ -376,6 +376,9 @@ def train(use_saved_model ):
                'merged': merged,
                'step': batch}
 
+
+        if use_saved_model:
+            eval_one_epoch(sess, ops, test_writer)
         for epoch in range(MAX_EPOCH):
             log_string('**** EPOCH %03d ****' % (epoch))
             sys.stdout.flush()
@@ -384,7 +387,7 @@ def train(use_saved_model ):
             eval_one_epoch(sess, ops, test_writer)
             
             # Save the variables to disk.
-            if epoch % 2 == 0:
+            if epoch % 1 == 0:
                 save_path = saver.save(sess, os.path.join(LOG_DIR, "model.ckpt"))
                 log_string("Model saved in file: %s" % save_path)
 
