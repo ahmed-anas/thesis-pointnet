@@ -21,22 +21,22 @@ FLAGS = parser.parse_args()
 
 if FLAGS.abs_data_path == 'default':
     APOLLO_DATA_DEPTH_DIR = os.path.join(ROOT_DIR, 'data/test-apollo/depth')
-else
+else:
     APOLLO_DATA_DEPTH_DIR =  FLAGS.abs_data_path
 
 if FLAGS.abs_label_path == 'default':
     APOLLO_DATA_LABEL_DIR = os.path.join(ROOT_DIR, 'data/test-apollo/label')
-else
+else:
     APOLLO_DATA_LABEL_DIR =  FLAGS.abs_label_path
 
 if FLAGS.abs_color_image_path == 'default':
     APOLLO_DATA_RGB_DIR = os.path.join(ROOT_DIR, 'data/test-apollo/ColorImage')
-else
+else:
     APOLLO_DATA_RGB_DIR =  FLAGS.abs_color_image_path
 
 if FLAGS.abs_data_dir == 'default':
     OUTPUT_DIR = os.path.join(ROOT_DIR, 'output/apollo_collected_data')
-else
+else:
     OUTPUT_DIR =  FLAGS.abs_data_dir
     
 if not os.path.exists(OUTPUT_DIR):
