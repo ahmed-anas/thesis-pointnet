@@ -15,33 +15,37 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--abs_data_path', type=str, default='default', help='yes or no')
 parser.add_argument('--abs_label_path', type=str, default='default', help='yes or no')
 parser.add_argument('--abs_color_image_path', type=str, default='default', help='yes or no')
+parser.add_argument('--abs_data_dir', type=str, default='default', help='yes or no')
 FLAGS = parser.parse_args()
 
 
-if FLAGS.relative_data_path == 'default':
+if FLAGS.abs_data_path == 'default':
     APOLLO_DATA_DEPTH_DIR = os.path.join(ROOT_DIR, 'data/test-apollo/depth')
 else
-    APOLLO_DATA_DEPTH_DIR =  FLAGS.relative_data_path
+    APOLLO_DATA_DEPTH_DIR =  FLAGS.abs_data_path
 
-if FLAGS.relative_label_path == 'default':
+if FLAGS.abs_label_path == 'default':
     APOLLO_DATA_LABEL_DIR = os.path.join(ROOT_DIR, 'data/test-apollo/label')
 else
-    APOLLO_DATA_LABEL_DIR =  FLAGS.relative_label_path
+    APOLLO_DATA_LABEL_DIR =  FLAGS.abs_label_path
 
-if FLAGS.relative_color_image_path == 'default':
+if FLAGS.abs_color_image_path == 'default':
     APOLLO_DATA_RGB_DIR = os.path.join(ROOT_DIR, 'data/test-apollo/ColorImage')
 else
-    APOLLO_DATA_RGB_DIR =  FLAGS.relative_color_image_path
+    APOLLO_DATA_RGB_DIR =  FLAGS.abs_color_image_path
 
+if FLAGS.abs_data_dir == 'default':
+    OUTPUT_DIR = os.path.join(ROOT_DIR, 'output/apollo_collected_data')
+else
+    OUTPUT_DIR =  FLAGS.abs_data_dir
     
+if not os.path.exists(OUTPUT_DIR):
+    os.mkdir(OUTPUT_DIR)
 
 IMG_RESIZE_RATIO = 0.25
 
 video_recording_dirs = [dir_name for dir_name in os.listdir(APOLLO_DATA_DEPTH_DIR) if os.path.isdir(os.path.join(APOLLO_DATA_DEPTH_DIR,dir_name))]
 
-OUTPUT_DIR = os.path.join(ROOT_DIR, 'output/apollo_collected_data')
-if not os.path.exists(OUTPUT_DIR):
-    os.mkdir(OUTPUT_DIR)
 
 for video_recording_dir in video_recording_dirs:
     
