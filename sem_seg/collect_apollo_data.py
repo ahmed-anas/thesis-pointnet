@@ -12,9 +12,9 @@ import argparse
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--relative_data_path', type=str, default='default', help='yes or no')
-parser.add_argument('--relative_label_path', type=str, default='default', help='yes or no')
-parser.add_argument('--relative_color_image_path', type=str, default='default', help='yes or no')
+parser.add_argument('--abs_data_path', type=str, default='default', help='yes or no')
+parser.add_argument('--abs_label_path', type=str, default='default', help='yes or no')
+parser.add_argument('--abs_color_image_path', type=str, default='default', help='yes or no')
 FLAGS = parser.parse_args()
 
 
