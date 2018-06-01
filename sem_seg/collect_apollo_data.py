@@ -8,10 +8,19 @@ from scipy import misc
 import math
 import scipy
 import numpy as np
+import argparse
 
-APOLLO_DATA_DEPTH_DIR = os.path.join(ROOT_DIR, 'data/test-apollo/depth')
-APOLLO_DATA_LABEL_DIR = os.path.join(ROOT_DIR, 'data/test-apollo/label')
-APOLLO_DATA_RGB_DIR = os.path.join(ROOT_DIR, 'data/test-apollo/ColorImage')
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--relative_data_path', type=str, default='data/test-apollo/depth', help='yes or no')
+parser.add_argument('--relative_label_path', type=str, default='data/test-apollo/label', help='yes or no')
+parser.add_argument('--relative_color_image_path', type=str, default='data/test-apollo/ColorImage', help='yes or no')
+FLAGS = parser.parse_args()
+
+
+APOLLO_DATA_DEPTH_DIR = os.path.join(ROOT_DIR, FLAGS.relative_data_path)
+APOLLO_DATA_LABEL_DIR = os.path.join(ROOT_DIR, FLAGS.relative_label_path)
+APOLLO_DATA_RGB_DIR = os.path.join(ROOT_DIR, FLAGS.relative_color_image_path)
 
 IMG_RESIZE_RATIO = 0.25
 
