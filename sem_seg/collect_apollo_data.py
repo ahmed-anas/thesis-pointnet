@@ -10,14 +10,31 @@ import scipy
 import numpy as np
 import argparse
 
+TOTAL_PROCESSED = 0
+TOTAL_LOOPS_CURRENT_RUN = 0
+
+if os.path.exists('collect_apollo_saves.npy'):
+    z = np.load('collect_apollo_saves.npy')
+    TOTAL_PROCESSED = z[0]
+
+def update_progress():
+    np.save('collect_apollo_saves.npy', [TOTAL_PROCESSED])
+
+
 
 def collect_for_camera(video_recording_dirs, camera_number):
+    global TOTAL_PROCESSED
+    global TOTAL_LOOPS_CURRENT_RUN
     print('checking for camera ' + camera_number)
 
     camera_folder = 'Camera '  + camera_number
 
 
+    total_videos = len(video_recording_dirs)
+    video_ite = 0
     for video_recording_dir in video_recording_dirs:
+        video_ite = video_ite + 1
+        print('----Processing video ' + str(video_ite) + ' of ' + str(total_videos)  )
 
         camera5_depth_folder_path = os.path.join(APOLLO_DATA_DEPTH_DIR, video_recording_dir, camera_folder)
         camera5_label_folder_path = os.path.join(APOLLO_DATA_LABEL_DIR, video_recording_dir, camera_folder)
@@ -26,7 +43,18 @@ def collect_for_camera(video_recording_dirs, camera_number):
         if (not os.path.exists(camera5_depth_folder_path)) or (not os.path.exists(camera5_label_folder_path)) or (not os.path.exists(camera5_rgb_folder_path)):
             continue
 
-        for image_name in os.listdir(camera5_depth_folder_path):
+        images_list = os.listdir(camera5_depth_folder_path)
+        images_list_size =  len(images_list)
+        images_list_ite = 0
+        for image_name in images_list:
+            TOTAL_LOOPS_CURRENT_RUN = TOTAL_LOOPS_CURRENT_RUN + 1
+            images_list_ite = images_list_ite + 1
+            
+            if TOTAL_LOOPS_CURRENT_RUN < TOTAL_PROCESSED:
+                continue
+
+            print('--------Processing Image ' + str(images_list_ite) + ' of ' + str(images_list_size)  )
+            
             out_filename1 = video_recording_dir + '_camera' + camera_number + '_' + image_name[0:-4] + '.npy'
 
             depth_img = misc.imread(os.path.join(camera5_depth_folder_path,image_name))
@@ -75,9 +103,13 @@ def collect_for_camera(video_recording_dirs, camera_number):
 
 
             np.save(os.path.join(OUTPUT_DIR,out_filename1), data_label)
+            TOTAL_PROCESSED = TOTAL_PROCESSED + 1
+            update_progress()
             
             
 
+
+update_progress()
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--abs_data_path', type=str, default='default', help='yes or no')
