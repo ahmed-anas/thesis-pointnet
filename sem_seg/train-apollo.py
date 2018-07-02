@@ -17,6 +17,7 @@ import provider
 import tf_util
 from model import *
 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
 
 parser = argparse.ArgumentParser()
