@@ -41,6 +41,7 @@ def collect_for_camera(video_recording_dirs, camera_number):
         camera5_rgb_folder_path = os.path.join(APOLLO_DATA_RGB_DIR, video_recording_dir, camera_folder)
 
         if (not os.path.exists(camera5_depth_folder_path)) or (not os.path.exists(camera5_label_folder_path)) or (not os.path.exists(camera5_rgb_folder_path)):
+            print('skipping missing folder: ' + video_recording_dir)
             continue
 
         images_list = os.listdir(camera5_depth_folder_path)
@@ -53,12 +54,20 @@ def collect_for_camera(video_recording_dirs, camera_number):
             if TOTAL_LOOPS_CURRENT_RUN < TOTAL_PROCESSED:
                 continue
 
-            print('--------Processing Image ' + str(images_list_ite) + ' of ' + str(images_list_size)  )
+            print('--------Processing Image ' + str(images_list_ite) + ' of ' + str(images_list_size) + '-------'  )
             
             out_filename1 = video_recording_dir + '_camera' + camera_number + '_' + image_name[0:-4] + '.npy'
 
+            label_image_path = os.path.join(camera5_label_folder_path,image_name)
+            if not os.path.exists(label_image_path):
+                label_image_path = os.path.join(camera5_label_folder_path,image_name)[0:-4] + '_bin.png'
+            
+            if not os.path.exists(label_image_path):
+                print('---------------Label not found ' + out_filename1)
+                continue
+
             depth_img = misc.imread(os.path.join(camera5_depth_folder_path,image_name))
-            label_img = misc.imread(os.path.join(camera5_label_folder_path,image_name))
+            label_img = misc.imread(label_image_path)
             rgb_img = misc.imread(os.path.join(camera5_rgb_folder_path,image_name)[0:-3] + 'jpg')
 
             #depth_img = Image.open(os.path.join(camera5_depth_folder_path,image_name))
@@ -82,8 +91,8 @@ def collect_for_camera(video_recording_dirs, camera_number):
 
             for x_ite in range(x):
                 for y_ite in range(y):
-                    if x_ite % 200 == 0 and y_ite == 0:
-                        print('%f done inserting', 100 * x_ite / x)
+                    # if x_ite % 200 == 0 and y_ite == 0:
+                    #     print('%f done inserting', 100 * x_ite / x)
                     
                     output_array[x_ite][y_ite]=([
                         x_ite,
@@ -120,17 +129,17 @@ FLAGS = parser.parse_args()
 
 
 if FLAGS.abs_data_path == 'default':
-    APOLLO_DATA_DEPTH_DIR = os.path.join(ROOT_DIR, 'data/test-apollo/depth')
+    APOLLO_DATA_DEPTH_DIR = os.path.join(ROOT_DIR, 'data/annotation-apollo_scape_label-train_depth-apollo-1.5/depth')
 else:
     APOLLO_DATA_DEPTH_DIR =  FLAGS.abs_data_path
 
 if FLAGS.abs_label_path == 'default':
-    APOLLO_DATA_LABEL_DIR = os.path.join(ROOT_DIR, 'data/test-apollo/label')
+    APOLLO_DATA_LABEL_DIR = os.path.join(ROOT_DIR, 'data/annotation-apollo_scape_label-train_depth-apollo-1.5/label')
 else:
     APOLLO_DATA_LABEL_DIR =  FLAGS.abs_label_path
 
 if FLAGS.abs_color_image_path == 'default':
-    APOLLO_DATA_RGB_DIR = os.path.join(ROOT_DIR, 'data/test-apollo/ColorImage')
+    APOLLO_DATA_RGB_DIR = os.path.join(ROOT_DIR, 'data/annotation-apollo_scape_label-train_depth-apollo-1.5/ColorImage')
 else:
     APOLLO_DATA_RGB_DIR =  FLAGS.abs_color_image_path
 
