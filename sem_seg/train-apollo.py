@@ -31,6 +31,7 @@ parser.add_argument('--optimizer', default='momentum', help='adam or momentum [d
 parser.add_argument('--decay_step', type=int, default=300000, help='Decay step for lr decay [default: 300000]')
 parser.add_argument('--decay_rate', type=float, default=0.5, help='Decay rate for lr decay [default: 0.5]')
 parser.add_argument('--test_recordings', type=str, default='11', help='Which recording numbers to use for test, i.e "1,2", "1", "3", "3,4,5" [default: 11]')
+parser.add_argument('--dir_path_h5', type=str, default='data/apollo_sem_seg_hdf5_data_test', help='directory containing the h5 files')
 parser.add_argument('--use_saved_model', type=str, default='no', help='yes or no')
 
 FLAGS = parser.parse_args()
@@ -76,13 +77,16 @@ BN_DECAY_CLIP = 0.99
 
 HOSTNAME = socket.gethostname()
 
-DIR_PATH_H5 = os.path.join(ROOT_DIR, 'data/apollo_sem_seg_hdf5_data_test')
+# DIR_PATH_H5 = os.path.join(ROOT_DIR, 'data/apollo_sem_seg_hdf5_data_test')
+DIR_PATH_H5 = FLAGS.dir_path_h5
+if not os.path.exists(DIR_PATH_H5):
+    raise ValueError('the given h5 directory is invalid')
 H5_FILES = [os.path.join(DIR_PATH_H5, file_h5) for file_h5 in os.listdir(DIR_PATH_H5) if file_h5[-2:] == 'h5']
 
 
 #ALL_FILES = provider.getDataFiles('data/apollo_sem_seg_hdf5_data')
-room_filelist = [line.rstrip() for line in open('data/apollo_sem_seg_hdf5_data_test/room_filelist.txt')]
-classMappings = [line.rstrip() for line in open('data/apollo_sem_seg_hdf5_data_test/class_mappings.txt')]
+room_filelist = [line.rstrip() for line in open(os.path.join(DIR_PATH_H5, 'room_filelist.txt'))]
+classMappings = [line.rstrip() for line in open(os.path.join(DIR_PATH_H5, 'class_mappings.txt'))]
 NUM_CLASSES = len(classMappings)
 
 
