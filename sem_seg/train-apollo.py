@@ -1,3 +1,6 @@
+
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 import math
 import argparse
 import math
@@ -6,7 +9,6 @@ import numpy as np
 import tensorflow as tf
 import socket
 
-import os
 import sys
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(BASE_DIR)
@@ -17,7 +19,6 @@ import provider
 import tf_util
 from model import *
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
 
 parser = argparse.ArgumentParser()
@@ -32,7 +33,7 @@ parser.add_argument('--optimizer', default='momentum', help='adam or momentum [d
 parser.add_argument('--decay_step', type=int, default=300000, help='Decay step for lr decay [default: 300000]')
 parser.add_argument('--decay_rate', type=float, default=0.5, help='Decay rate for lr decay [default: 0.5]')
 parser.add_argument('--test_recordings', type=str, default='11', help='Which recording numbers to use for test, i.e "1,2", "1", "3", "3,4,5" [default: 11]')
-parser.add_argument('--dir_path_h5', type=str, default='data/apollo_sem_seg_hdf5_data_test', help='directory containing the h5 files')
+parser.add_argument('--dir_path_h5', type=str, default='data/apollo_sem_seg_hdf5_data', help='directory containing the h5 files')
 parser.add_argument('--use_saved_model', type=str, default='no', help='yes or no')
 
 FLAGS = parser.parse_args()
@@ -428,8 +429,6 @@ def train_one_epoch(sess, ops, train_writer):
         start_idx = batch_idx * BATCH_SIZE
         end_idx = (batch_idx+1) * BATCH_SIZE
 
-        if batch_idx == 118:
-            z=123123
 
         data_for_loop, label_for_loop = get_train_or_test_data(BATCH_SIZE, True)
 
