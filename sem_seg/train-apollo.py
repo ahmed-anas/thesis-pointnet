@@ -7,8 +7,9 @@ import math
 import h5py
 import numpy as np
 import tensorflow as tf
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+tf.logging.set_verbosity(tf.logging.ERROR)
 import socket
-
 import sys
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(BASE_DIR)
@@ -353,13 +354,16 @@ def train(use_saved_model ):
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
         config.allow_soft_placement = True
-        config.log_device_placement = True
+        config.log_device_placement = False
         sess = tf.Session(config=config)
 
 
 
         # Init variables
         init = tf.global_variables_initializer()
+
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+        tf.logging.set_verbosity(tf.logging.ERROR)
         sess.run(init, {is_training_pl:True})
 
 
