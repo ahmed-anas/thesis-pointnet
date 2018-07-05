@@ -1,14 +1,14 @@
 
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+# os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 import math
 import argparse
 import math
 import h5py
 import numpy as np
 import tensorflow as tf
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
-tf.logging.set_verbosity(tf.logging.ERROR)
+# os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+# tf.logging.set_verbosity(tf.logging.ERROR)
 import socket
 import sys
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -248,8 +248,9 @@ def get_train_or_test_data(amount, for_training):
         start_idx_batch = index_for_run - (h5_fileindex * BATCH_SIZE_H5)
 
         h5_remaining_batch_size = BATCH_SIZE_H5 - start_idx_batch
+        total_remaining_size = data_for_training.shape[0] - start_idx_batch
 
-        amount_to_fetch_from_batch = min(amount_to_retrieve, h5_remaining_batch_size)
+        amount_to_fetch_from_batch = min(amount_to_retrieve, h5_remaining_batch_size, total_remaining_size)
 
         start_idx_total = index_for_run
         end_idx_total = start_idx_total + amount_to_fetch_from_batch
@@ -362,8 +363,6 @@ def train(use_saved_model ):
         # Init variables
         init = tf.global_variables_initializer()
 
-        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
-        tf.logging.set_verbosity(tf.logging.ERROR)
         sess.run(init, {is_training_pl:True})
 
 
@@ -394,12 +393,13 @@ def train(use_saved_model ):
             sys.stdout.flush()
              
             train_one_epoch(sess, ops, train_writer)
+            save_path = saver.save(sess, os.path.join(LOG_DIR, "model.ckpt"))
+            log_string("Model saved in file: %s" % save_path)
+
             eval_one_epoch(sess, ops, test_writer)
             
-            # Save the variables to disk.
-            if epoch % 1 == 0:
-                save_path = saver.save(sess, os.path.join(LOG_DIR, "model.ckpt"))
-                log_string("Model saved in file: %s" % save_path)
+            # # Save the variables to disk.
+            # if epoch % 1 == 0:
 
 
 
